@@ -1,10 +1,15 @@
 CXX = g++
-CXXFLAGS = -Wall -Werror -std=c++14
+CXXFLAGS = -Wall -Werror -Wno-int-in-bool-context -std=c++14 -ggdb -Og
 
 # Librarys
-INCLUDE = -I/usr/local/include/ -I/usr/local/include/eigen3
+PKGS = eigen3
+
+INCLUDE := $(foreach pkg,$(PKGS),$(shell pkg-config --cflags $(pkg)))
+CXXFLAGS += $(INCLUDE)
+LDLIBS := $(foreach pkg,$(PKGS),$(shell pkg-config --libs $(pkg)))
+
 LDFLAGS = -L/usr/local/lib
-LDLIBS = -lboost_system -lcrypto -lssl -lcpprest -lcppdb 
+LDLIBS += -lboost_system -lcrypto -lssl -lcpprest -lcppdb 
 
 SRCS = $(wildcard *.cpp)
 OBJS = $(SRCS:.cpp=.o)
@@ -18,9 +23,9 @@ getdata: $(OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o $@ $+
 
 run: $(OBJS2)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) $(LDFLAGS) $(LDLIBS) -g -o $@ $+
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o $@ $+
 
 clean:
-	rm -f -- $(OBJS) getdata run
+	rm -f -- $(OBJS) $(OBJS2) getdata run
 
-.PHONY: clean
+.PHONY: clean all
