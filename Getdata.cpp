@@ -33,12 +33,19 @@ int main(int argc, char* argv[]) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
             auto results = out.at(U("results"));
             for(auto res: results.as_array()){
-                Review rev(
-                        res.at(U("score")).as_integer(),
-                        res.at(U("reviewer")).as_string(),
-                        res.at(U("wikiObject")).as_string()
-                        );
-                rev.sql_insert(S) << exec;
+                // theres prob a nice way to check if string and unpack if so in moder c++ (i.e rust option/result types)
+                if (res.at(U("reviewer")).is_string() && res.at(U("wikiObject")).is_string() && res.at(U("score")).is_integer()){
+                    Review rev(
+                            res.at(U("score")).as_integer(),
+                            res.at(U("reviewer")).as_string(),
+                            res.at(U("wikiObject")).as_string()
+                            );
+                    // is it worth validating json extraction AND class fields?
+                    // prob should just be able to construct Review with res object and do validity check there
+                    if (rev.is_valid()){
+                        rev.sql_insert(S) << exec;
+                    }
+                }
             }
         }
         trans.commit();
