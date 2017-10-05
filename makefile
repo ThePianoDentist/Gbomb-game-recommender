@@ -1,5 +1,6 @@
 CXX = g++
 CXXFLAGS = -Wall -Werror -Wno-int-in-bool-context -std=c++14 -ggdb -Og
+# -Wno-int-in-bool-context due to eigen throwing it a lot
 
 # Librarys
 PKGS = eigen3

@@ -1,23 +1,18 @@
 #include <iostream>
 #include <map>
 #include <cppdb/frontend.h>
-#include "colFilter.h"
+#include "model.h"
 
 using namespace std;
 using namespace cppdb;
 using namespace Eigen;
 
-struct cost_grad{
-    double cost;
-    double grad;
-};
 
 struct grad{
     VectorXd X_grad;
     VectorXd theta_grad;
 };
 
-// make lambda generic for practice
 auto cofi_cost_func(MatrixXd X, MatrixXd theta, MatrixXd Y, MatrixXd R, int user_count, int game_count, int num_features, float lambda){
     double cost;
     //double grad;
