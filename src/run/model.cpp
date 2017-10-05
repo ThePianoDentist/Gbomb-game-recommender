@@ -3,7 +3,8 @@ using namespace Eigen;
 using std::cout;
 using std::endl;
 
-Model::Model(cppdb::session sess, int num_iterations, float learning_rate, float regularization){
+Model::Model(cppdb::session sess, int num_features, int num_iterations, float learning_rate, float regularization){
+    this -> num_features = num_features;
     this -> set_users(sess);
     this -> set_games(sess);
     this -> reviewM = MatrixXd::Constant(this -> num_games, this -> num_users, -1.0);
@@ -21,6 +22,7 @@ Model::Model(cppdb::session sess, int num_iterations, float learning_rate, float
         this -> reviewM(this -> game_id[game], this -> user_id[user]) = score;
         this -> binary_reviewM(this -> game_id[game], this -> user_id[user]) = 1;
     }
+    cout << "constructed";
     
 };
 

@@ -16,7 +16,6 @@ class Model{
         float learning_rate;
         int num_iterations;
         float regularization;
-        cost_grad cost();
 
     public:
         int num_users;
@@ -33,5 +32,7 @@ class Model{
         // can practice generics here for float/int num-iterations
         Model(cppdb::session, int, float, float);
         void gradient_descent();
-               
+        cost_grad cost();  // can be private
+
+    Model(cppdb::session, int, int, float, float); 
 };
