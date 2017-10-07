@@ -10,23 +10,23 @@ CXXFLAGS += $(INCLUDE)
 LDLIBS := $(foreach pkg,$(PKGS),$(shell pkg-config --libs $(pkg)))
 
 LDFLAGS = -L/usr/local/lib
-LDLIBS += -lboost_system -lcrypto -lssl -lcpprest -lcppdb 
+LDLIBS += -lboost_system -lcrypto -lssl -lcpprest -lcppdb -lboost_serialization 
 
-SRCS = $(wildcard *.cpp)
+SRCS = $(wildcard src/getdata/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
 
-SRCS2 = $(wildcard src/run/*.cpp)
+SRCS2 = $(wildcard src/model/*.cpp)
 OBJS2 = $(SRCS2:.cpp=.o)
 
-all: getdata run
+all: getdata model
 
 getdata: $(OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o $@ $+
 
-run: $(OBJS2)
+model: $(OBJS2)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o $@ $+
 
 clean:
-	rm -f -- $(OBJS) $(OBJS2) getdata run
+	rm -f -- $(OBJS) $(OBJS2) getdata model
 
 .PHONY: clean all
