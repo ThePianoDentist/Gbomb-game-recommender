@@ -1,6 +1,6 @@
 *.swp
 *.o
-getdata
-model
+/getdata
+/model
 run
 data
