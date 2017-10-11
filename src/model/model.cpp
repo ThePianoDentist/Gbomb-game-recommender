@@ -21,7 +21,7 @@ Model::Model(cppdb::session sess, int num_features, int num_iterations, float le
         string game;
         int score;  // can I have the nice one line extraction? but still use auto?
         res >> user >> game >> score;
-        this -> reviewM(this -> game_id[game], this -> user_id[user]) = score;
+        this -> reviewM(this -> game_id[game], this -> user_id[user]) = score - 2.5;
         this -> binary_reviewM(this -> game_id[game], this -> user_id[user]) = 1;
     }
 };
@@ -59,8 +59,8 @@ MatrixXd Model::grad_checkX(double epsilon){
         for(int j=0; j<this -> num_features; j++){
             MatrixXd epsilonM = MatrixXd::Zero(this -> num_games, this -> num_features);
             epsilonM(i, j) = epsilon;
-            auto J_plus = 0.5 * (pow(this -> binary_reviewM.cwiseProduct((X_dash_p + epsilonM) * this -> theta.transpose() - this -> reviewM).sum(), 2) + this -> regularization * (pow(this -> theta.sum(), 2) + pow((X_dash_p + epsilonM).sum(), 2)));
-            auto J_minus = 0.5 * (pow(this -> binary_reviewM.cwiseProduct((X_dash_n - epsilonM) * this -> theta.transpose() - this -> reviewM).sum(), 2) + this -> regularization * (pow(this -> theta.sum(), 2) + pow((X_dash_n - epsilonM).sum(), 2)));
+            double J_plus = 0.5 * (this -> binary_reviewM.cwiseProduct((X_dash_n + epsilonM) * this -> theta.transpose() - this -> reviewM).array().pow(2).sum() + this -> regularization * (this -> theta.array().pow(2).sum() + (X_dash_n + epsilonM).array().pow(2).sum()));
+            double J_minus = 0.5 * (this -> binary_reviewM.cwiseProduct((X_dash_n - epsilonM) * this -> theta.transpose() - this -> reviewM).array().pow(2).sum() + this -> regularization * (this -> theta.array().pow(2).sum() + (X_dash_n - epsilonM).array().pow(2).sum()));
             tmp(i, j) = (J_plus - J_minus) / (2 * epsilon);
             epsilonM(i, j) = 0.0;
         }
@@ -70,35 +70,28 @@ MatrixXd Model::grad_checkX(double epsilon){
 
 CostGrad Model::cost_grad(){
     auto cost = 0.0;
-    cost = 0.5 * (pow(this -> binary_reviewM.cwiseProduct(this -> X* this -> theta.transpose() - this -> reviewM).sum(), 2) + this -> regularization * (pow(this -> theta.sum(), 2) + pow(this -> X.sum(), 2)));
+    cost = 0.5 * (this -> binary_reviewM.cwiseProduct(this -> X* this -> theta.transpose() - this -> reviewM).array().pow(2).sum() + this -> regularization * (this -> theta.array().pow(2).sum() + this -> X.array().pow(2).sum()));
     cout << cost << endl;
     MatrixXd X_grad = MatrixXd::Zero(this -> num_games, this -> num_features);
     MatrixXd theta_grad = MatrixXd::Zero(this -> num_users, this -> num_features);
     for(int i=0; i<this -> num_games; i++){
-        // How to logical index in eigen?
         auto R_row = this -> binary_reviewM.row(i).array();
         // If all in R_row 0 the logical indexing will fail/except
         if (R_row.sum() == 0) {
             continue;
         }
         auto indices = (R_row != 0).cast<int>();
-        // blah.operator(rowIndices, colIndices)
-        //int a[2] = {0, 1};
-        //int b[3] = {0, 1, 2};
-        //static_assert(decltype(theta)::dummy_error, "DUMP MY TYPE" );
         MatrixXd theta_dash;
         igl::slice(this -> theta, indices, 1, theta_dash);
         //cout << (X.row(i) * theta_dash.transpose()).rows() << endl << (X.row(i) * theta_dash.transpose()).cols() << endl;
         VectorXd Y_dash;
         VectorXd Y2 = this -> reviewM.row(i);
         igl::slice(Y2, indices, Y_dash);
-        //cout << Y_dash.rows() << endl << Y_dash.cols() << endl;
-        //// rofl I guess this is why people use matlab, octave or numpy!!! :D
         X_grad.row(i) = (this -> X.row(i) * theta_dash.transpose() - Y_dash.transpose()) * theta_dash + this -> regularization * this -> X.row(i);
+
     }
-    auto check = this -> grad_checkX(0.00001);
-    auto rel_error = (X_grad - check).norm() / (X_grad + check).norm();
-    cout << "rel error" << rel_error << endl;
+    auto check = this -> grad_checkX(0.0001);
+    cout << (X_grad - check).norm() / (X_grad + check).norm() << endl;
 
     for(int i=0; i<this -> num_users; i++){
         // How to logical index in eigen?
@@ -127,7 +120,7 @@ CostGrad Model::cost_grad(){
 };
 
 void Model::set_users(cppdb::session sess){
-    cppdb::result game_res = sess << "SELECT DISTINCT(game) FROM review_copy;";
+    cppdb::result game_res = sess << "SELECT DISTINCT(game) FROM (SELECT game FROM review_copy ORDER BY RANDOM()) as Q;";
     auto counter = 0;
     while(game_res.next()){
         string game;
@@ -138,7 +131,7 @@ void Model::set_users(cppdb::session sess){
 };
 
 void Model::set_games(cppdb::session sess){
-    cppdb::result user_res = sess << "SELECT DISTINCT(reviewer) FROM review_copy;";
+    cppdb::result user_res = sess << "SELECT DISTINCT(reviewer) FROM (SELECT reviewer FROM review_copy ORDER BY RANDOM()) as Q;";
     auto counter = 0;
     while(user_res.next()) {
         string user;

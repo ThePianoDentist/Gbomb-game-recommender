@@ -21,15 +21,15 @@ OBJS_MODEL = $(SRCS_MODEL:.cpp=.o)
 SRCS_USE = $(wildcard src/use/*.cpp)
 OBJS_USE = $(SRCS_USE:.cpp=.o)
 
-all: getdata model use
+all: getdata build use
 
 getdata: $(OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o $@ $+
 
-model: $(OBJS_MODEL)
+build: $(OBJS_MODEL)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o $@ $+
 
-use: $(OBJS_USE)
+use: $(OBJS_USE) src/model/model.cpp
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o $@ $+
 
 clean:
