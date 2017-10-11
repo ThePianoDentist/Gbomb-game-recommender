@@ -15,7 +15,7 @@ Model::Model(cppdb::session sess, int num_features, int num_iterations, float le
     this -> X = MatrixXd::Random(this -> num_games, this -> num_features);
     this -> theta = MatrixXd::Random(this -> num_users, this -> num_features);
 
-    cppdb::result res = sess << "SELECT reviewer,game,score FROM review_copy ORDER BY reviewer";
+    cppdb::result res = sess << "SELECT reviewer,game,score FROM review ORDER BY reviewer";
     while(res.next()){
         string user;
         string game;
@@ -74,53 +74,17 @@ CostGrad Model::cost_grad(){
     cout << cost << endl;
     MatrixXd X_grad = MatrixXd::Zero(this -> num_games, this -> num_features);
     MatrixXd theta_grad = MatrixXd::Zero(this -> num_users, this -> num_features);
-    for(int i=0; i<this -> num_games; i++){
-        auto R_row = this -> binary_reviewM.row(i).array();
-        // If all in R_row 0 the logical indexing will fail/except
-        if (R_row.sum() == 0) {
-            continue;
-        }
-        auto indices = (R_row != 0).cast<int>();
-        MatrixXd theta_dash;
-        igl::slice(this -> theta, indices, 1, theta_dash);
-        //cout << (X.row(i) * theta_dash.transpose()).rows() << endl << (X.row(i) * theta_dash.transpose()).cols() << endl;
-        VectorXd Y_dash;
-        VectorXd Y2 = this -> reviewM.row(i);
-        igl::slice(Y2, indices, Y_dash);
-        X_grad.row(i) = (this -> X.row(i) * theta_dash.transpose() - Y_dash.transpose()) * theta_dash + this -> regularization * this -> X.row(i);
+    auto tmp = this -> binary_reviewM.cwiseProduct(this -> X * theta.transpose() - this -> reviewM);
+    X_grad = tmp * theta + this -> regularization * this -> X;
 
-    }
-    auto check = this -> grad_checkX(0.0001);
-    cout << (X_grad - check).norm() / (X_grad + check).norm() << endl;
-
-    for(int i=0; i<this -> num_users; i++){
-        // How to logical index in eigen?
-        auto a = this -> binary_reviewM.col(i);
-        auto R_col = a.array();
-        // If all in R_col 0 the logical indexing will fail/except
-        if (R_col.sum() == 0) {
-            continue;
-        }
-        auto indices = (R_col != 0).cast<int>();
-        // blah.operator(rowIndices, colIndices)
-        //int a[2] = {0, 1};
-        //int b[3] = {0, 1, 2};
-        //static_assert(decltype(theta)::dummy_error, "DUMP MY TYPE" );
-        MatrixXd X_dash;
-        igl::slice(this -> X, indices, 1, X_dash);
-        //cout << (X.row(i) * theta_dash.transpose()).rows() << endl << (X.row(i) * theta_dash.transpose()).cols() << endl;
-        VectorXd Y_dash;
-        VectorXd Y2 = this -> reviewM.col(i);
-        igl::slice(Y2, indices, Y_dash);
-        //cout << Y_dash.rows() << endl << Y_dash.cols() << endl;
-        //// rofl I guess this is why people use matlab, octave or numpy!!! :D
-        theta_grad.row(i) = (X_dash * this -> theta.transpose().col(i) - Y_dash).transpose() * X_dash + this -> regularization * this -> theta.row(i);
-    }
+    //auto check = this -> grad_checkX(0.0001);
+    //cout << (X_grad - check).norm() / (X_grad + check).norm() << endl;
+    theta_grad = tmp.transpose() * this -> X + this -> regularization * this -> theta;
     return CostGrad{cost, Grad{X_grad, theta_grad}};
 };
 
 void Model::set_users(cppdb::session sess){
-    cppdb::result game_res = sess << "SELECT DISTINCT(game) FROM (SELECT game FROM review_copy ORDER BY RANDOM()) as Q;";
+    cppdb::result game_res = sess << "SELECT DISTINCT(game) FROM (SELECT game FROM review ORDER BY RANDOM()) as Q;";
     auto counter = 0;
     while(game_res.next()){
         string game;
@@ -131,7 +95,7 @@ void Model::set_users(cppdb::session sess){
 };
 
 void Model::set_games(cppdb::session sess){
-    cppdb::result user_res = sess << "SELECT DISTINCT(reviewer) FROM (SELECT reviewer FROM review_copy ORDER BY RANDOM()) as Q;";
+    cppdb::result user_res = sess << "SELECT DISTINCT(reviewer) FROM (SELECT reviewer FROM review ORDER BY RANDOM()) as Q;";
     auto counter = 0;
     while(user_res.next()) {
         string user;
