@@ -15,7 +15,7 @@ Model::Model(cppdb::session sess, int num_features, int num_iterations, float le
     this -> X = MatrixXd::Random(this -> num_games, this -> num_features);
     this -> theta = MatrixXd::Random(this -> num_users, this -> num_features);
 
-    cppdb::result res = sess << "SELECT reviewer,game,score FROM review ORDER BY reviewer";
+    cppdb::result res = sess << "SELECT reviewer,game,score FROM review_copy ORDER BY reviewer";
     while(res.next()){
         string user;
         string game;
@@ -50,6 +50,24 @@ void Model::save(){
     this -> write_map("/home/jdog/projects/cpp/gbombRecommend/data/game_id.dat", this -> game_id);
 }
 
+MatrixXd Model::grad_checkX(double epsilon){
+    // why does autoing these matrices cause big problems?
+    MatrixXd X_dash_p = this -> X;
+    MatrixXd X_dash_n = this -> X;
+    MatrixXd tmp = MatrixXd::Zero(this -> num_games, this -> num_features);
+    for(int i=0; i<this -> num_games; i++){
+        for(int j=0; j<this -> num_features; j++){
+            MatrixXd epsilonM = MatrixXd::Zero(this -> num_games, this -> num_features);
+            epsilonM(i, j) = epsilon;
+            auto J_plus = 0.5 * (pow(this -> binary_reviewM.cwiseProduct((X_dash_p + epsilonM) * this -> theta.transpose() - this -> reviewM).sum(), 2) + this -> regularization * (pow(this -> theta.sum(), 2) + pow((X_dash_p + epsilonM).sum(), 2)));
+            auto J_minus = 0.5 * (pow(this -> binary_reviewM.cwiseProduct((X_dash_n - epsilonM) * this -> theta.transpose() - this -> reviewM).sum(), 2) + this -> regularization * (pow(this -> theta.sum(), 2) + pow((X_dash_n - epsilonM).sum(), 2)));
+            tmp(i, j) = (J_plus - J_minus) / (2 * epsilon);
+            epsilonM(i, j) = 0.0;
+        }
+    }
+    return tmp;
+}
+
 CostGrad Model::cost_grad(){
     auto cost = 0.0;
     cost = 0.5 * (pow(this -> binary_reviewM.cwiseProduct(this -> X* this -> theta.transpose() - this -> reviewM).sum(), 2) + this -> regularization * (pow(this -> theta.sum(), 2) + pow(this -> X.sum(), 2)));
@@ -78,6 +96,9 @@ CostGrad Model::cost_grad(){
         //// rofl I guess this is why people use matlab, octave or numpy!!! :D
         X_grad.row(i) = (this -> X.row(i) * theta_dash.transpose() - Y_dash.transpose()) * theta_dash + this -> regularization * this -> X.row(i);
     }
+    auto check = this -> grad_checkX(0.00001);
+    auto rel_error = (X_grad - check).norm() / (X_grad + check).norm();
+    cout << "rel error" << rel_error << endl;
 
     for(int i=0; i<this -> num_users; i++){
         // How to logical index in eigen?
@@ -106,7 +127,7 @@ CostGrad Model::cost_grad(){
 };
 
 void Model::set_users(cppdb::session sess){
-    cppdb::result game_res = sess << "SELECT DISTINCT(game) FROM review;";
+    cppdb::result game_res = sess << "SELECT DISTINCT(game) FROM review_copy;";
     auto counter = 0;
     while(game_res.next()){
         string game;
@@ -117,7 +138,7 @@ void Model::set_users(cppdb::session sess){
 };
 
 void Model::set_games(cppdb::session sess){
-    cppdb::result user_res = sess << "SELECT DISTINCT(reviewer) FROM review;";
+    cppdb::result user_res = sess << "SELECT DISTINCT(reviewer) FROM review_copy;";
     auto counter = 0;
     while(user_res.next()) {
         string user;

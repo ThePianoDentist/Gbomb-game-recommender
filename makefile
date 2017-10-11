@@ -15,18 +15,24 @@ LDLIBS += -lboost_system -lcrypto -lssl -lcpprest -lcppdb -lboost_serialization
 SRCS = $(wildcard src/getdata/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
 
-SRCS2 = $(wildcard src/model/*.cpp)
-OBJS2 = $(SRCS2:.cpp=.o)
+SRCS_MODEL = $(wildcard src/model/*.cpp)
+OBJS_MODEL = $(SRCS_MODEL:.cpp=.o)
 
-all: getdata model
+SRCS_USE = $(wildcard src/use/*.cpp)
+OBJS_USE = $(SRCS_USE:.cpp=.o)
+
+all: getdata model use
 
 getdata: $(OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o $@ $+
 
-model: $(OBJS2)
+model: $(OBJS_MODEL)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o $@ $+
+
+use: $(OBJS_USE)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o $@ $+
 
 clean:
-	rm -f -- $(OBJS) $(OBJS2) getdata model
+	rm -f -- $(OBJS) $(OBJS_MODEL) $(OBJS_USE) getdata model use
 
 .PHONY: clean all

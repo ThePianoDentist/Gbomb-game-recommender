@@ -40,8 +40,8 @@ class Model{
         void set_users(cppdb::session);
         void set_games(cppdb::session);
         // can practice generics here for float/int num-iterations
-        Model(cppdb::session, int, float, float);
         void gradient_descent();
+        MatrixXd grad_checkX(double);
         CostGrad cost_grad();  // can be private
         void write_matrix(const char*, const MatrixXd&);
         void read_matrix(const char*, MatrixXd&);
